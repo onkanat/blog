@@ -1,0 +1,136 @@
+<!doctype html><html lang=tr><meta charset=utf-8><title>Prompt'tan kanıtlı modele: Hermes + cad-bridge + FreeCAD</title>
+<article>
+<blockquote>
+<p><strong>Slogan:</strong> Model üretmek kolay. Zor olan, doğru olduğunu <strong>kanıtlamak</strong>.</p>
+</blockquote>
+<p><em>cad-bridge 0.2.1 · motor ölçümleri 24.10.2026 · Örnek 3 ölçümü 27.10.2026</em></p>
+<p><em>Bu yazı iki bölümlük dizinin <strong>ikincisi</strong>. Birinci bölüm — "cad-bridge: ajan çizdi demek yetmiyor" — aracın kendisini anlatıyor: sorun, dört parça, kapı tablosu ve sınırlar. Sıra: önce araç, sonra kanıt.</em></p>
+<p><em>Birinci bölüm: <a href="https://onkanat.blogspot.com/2026/10/bolum-1-cad-bridge-ajan-cizdi-demek.html">https://onkanat.blogspot.com/2026/10/bolum-1-cad-bridge-ajan-cizdi-demek.html</a></em></p>
+<p>Bir yapay zekâ ajanından CAD istediğinizde ne beklersiniz? Çoğu kişi "ekranda tıklayan bir robot" hayal eder. Bu yazı, tersini anlatıyor: <strong>GUI açmayan</strong>, modeli parametreyle üreten ve — asıl işi — ürettiği modelin doğru olduğunu <strong>sayıyla kanıtlayan</strong> bir hat. Örnek de soyut değil: döner tabla üzerinde AI kamera tutucusu, A5 kitap tarama tezgahı ve Raspberry Pi 5 kutusu.</p>
+<p><img src="https://onkanat.github.io/blog/img/cad-bridge/rig-tutucu.png" alt="Döner tabla ve AI kamera rig&#39;i — FreeCAD montajının önizlemesi" /> <em>Döner tabla (altta) + mafsallı kol + sarı modül: AI kamera. Bu görüntü, montajın kendi geometrisinden üretildi.</em></p>
+<h2 id="neden-tıklayan-ajan-yanlış-yol">Neden "tıklayan ajan" yanlış yol</h2>
+<p>FreeCAD'in Python konsolu güçlüdür ama <strong>elle</strong> çalışır: seçersiniz, komut yazarsınız, sonucu gözle kontrol edersiniz. Ajan için bu üç adımın hepsi kırılgan: seçim kimliği (kenar/yüz numarası) model değişince kayar, gözle kontrol denetlenebilir değildir, komut geçmişi kalmaz.</p>
+<p>cad-bridge bu yüzden farklı bir sözleşme kuruyor:</p>
+<ul>
+<li><strong>GUI açılmaz.</strong> Her şey başsız <code>FreeCADCmd</code> üzerinde koşar.</li>
+<li><strong>Model CLI'de kurulmaz.</strong> Kurulum adımı bir <strong>betiktir</strong> (<code>parca.py</code>); CLI onu doğrular.</li>
+<li><strong>Hüküm serbest metin değildir.</strong> Her komut tek zarf döner: <code>ok · code · message · artifacts[] · metrics{} · hint · duration_ms</code>. "Geçti/kaldı" bilgisi <code>sonuc.gecti</code> <strong>bool</strong>'udur ve ancak girdi sha256'sı, eşikler ve ölçümler yanındaysa denetlenebilir.</li>
+</ul>
+<p>Ölçülen hâli (24.10.2026, <code>cad-bridge 0.2.1</code>): <strong>10 kapı</strong>, <strong>10 komut</strong>, <strong>8 MCP aracı</strong>, <strong>18 zarf hata kodu</strong>, <strong>948 test geçti</strong> (15 atlandı, 1 beklenen başarısız).</p>
+<p><img src="https://onkanat.github.io/blog/img/cad-bridge/tezgah-iso.png" alt="A5 kitap + telefon tarama tezgahı — izometrik" /> <em>Tarama tezgahı: taban, sütun, mafsallı kol ve telefon tepsisi. Çizim, modelin kendi geometrisinden (HLR) üretildi.</em></p>
+<p><img src="https://onkanat.github.io/blog/img/cad-bridge/tezgah-top.png" alt="A5 tarama tezgahı — üst bakış" /> <em>Aynı komuttan ikinci bakış: üstten taban, sütun flanşı, kol ve telefon tepsisi (ortadaki kare kesik).</em></p>
+<h2 id="hat-nasıl-işliyor--prompttan-kanıta">Hat nasıl işliyor — prompt'tan kanıta</h2>
+<ol type="1">
+<li><strong>İnsan niyeti ve fiziksel gerçeği getirir.</strong> Fotoğraf, kumpas ölçüsü, bir cümle: <em>"konnektör arkada olacak"</em>.</li>
+<li><strong>Ajan niyeti parametreye çevirir.</strong> <code>parca.py</code> içinde <code>FPC_KONUM = "arka"</code>, <code>NAMLU_D = 10.17</code> gibi tek satırlar.</li>
+<li><strong>Model başsız üretilir.</strong> FreeCADCmd betiği koşar; çıktı <code>.FCStd</code> + STL/STEP.</li>
+<li><strong>Kapılar koşar.</strong> <code>schema</code> (parça sözleşmesi), <code>join</code> (delik deseni), <code>bom</code> (parça tablosu ↔︎ model), <code>hedef</code> (hacim), <code>render</code>/<code>render-check</code> (bakış + eksen), <code>varyant</code> (tek model iki konfigürasyon), <code>lane</code>, <code>math</code>, <code>eksen</code>.</li>
+<li><strong>Kanıt dosyaya düşer.</strong> <code>kanit/*.json</code>: girdi sha256, ölçümler, eşikler, süre. Yeniden üretilebilir.</li>
+</ol>
+<p>Kritik fark: ajan "yaptım" demiyor. <strong>Kanıt satırı yoksa iş bitmiş sayılmıyor.</strong></p>
+<h2 id="örnek-1--tek-model-iki-varyant-döner-tabla">Örnek 1 — tek model, iki varyant: döner tabla</h2>
+<p>FMS-200 tezgâhının döner tabla parçası (<code>CONJUNTO MOD PLATO GIRATORIO</code>) tek bir parametrik aile olarak yazıldı: <code>n_konum</code> (burç kulesi sayısı) tek parametre; plaka çapları, burç bölüm dairesi ve delik sayısı bundan türüyor.</p>
+<ul>
+<li><code>n_konum = 8</code> → EST.4 (C4/1-A) · burç dairesi Ø220 · dönen plaka Ø280 · taban Ø300</li>
+<li><code>n_konum = 12</code> → EST.5 (C5/1-A) · burç dairesi Ø240 · dönen plaka Ø300 · taban Ø320</li>
+<li>Rulmanlar <strong>katalog</strong> verisi (tolerans 0): RNU 3004 (Fw 25,5 / D 42 / B 16), 6005 RS (25 × 47 × 12)</li>
+<li>Plaka ölçüleri <strong>resim-tahmini</strong> (±2 mm) — bu etiket raporda görünür, gizlenmez</li>
+</ul>
+<p>Aynı betik, iki varyant, tek kaynak. Kopya model yok; "hangi sürümü çizdik" sorusu dosya adında değil, parametrede duruyor.</p>
+<h2 id="örnek-2--kamera-rigi-ve-ai-kamera-ölçümün-kaynağı">Örnek 2 — kamera rig'i ve AI kamera: ölçümün kaynağı</h2>
+<p>GrabCAD'de yayınlanmış bir döner tabla + mafsallı kol montajına (<em>Turntable and camera rig</em>, Rwide, 30.08.2023 — <a href="https://grabcad.com/library/turntable-and-camera-rig-1">https://grabcad.com/library/turntable-and-camera-rig-1</a>) Arducam Hawkeye (64 MP) modülü eklendi. Modelin sayfasında ayrı bir lisans etiketi yok; bu yüzden model dosyaları dağıtılmıyor, yalnız kendi ölçümümüz ve kendi çizimimiz gösteriliyor. İşin özü geometri değil, <strong>hangi sayının nereden geldiği</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Ölçü</th>
+<th>Değer</th>
+<th>Kaynak</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sensör modülü çevresi</td>
+<td>25,00 × 23,86 mm</td>
+<td>ölçüldü (kumpas)</td>
+</tr>
+<tr>
+<td>Delik deseni</td>
+<td>21,0 × 12,5 mm · r = 1,10 · ø2,2</td>
+<td>ölçüldü</td>
+</tr>
+<tr>
+<td>Lens namlusu</td>
+<td><strong>ø10,17 mm</strong></td>
+<td>ölçüldü — <em>önce çizimden pikselle ø12,7 sanılmıştı</em></td>
+</tr>
+<tr>
+<td>Arka modül derinliği</td>
+<td>3,8 mm</td>
+<td>türetildi (toplam 11,9 mm'ye otursun diye)</td>
+</tr>
+</tbody>
+</table>
+<p>O ø12,7 → ø10,17 düzeltmesi <strong>2,5 mm</strong> hataydı. Hata ölçüm yönteminde değil, <strong>etikette</strong>ydi: raporda "çizimden" yazan bir sayı, "ölçüldü" sanıldı. Bugün kural net: her ölçü <code>{deger, birim, kaynak, guven}</code> taşır; türetilmiş ölçü işaretlidir ve dışarıdan gelen kumpas değeriyle karşılaştırılır.</p>
+<h3 id="çakışma-testi-tek-sayı-değil-aralık">Çakışma testi: tek sayı değil, aralık</h3>
+<p>Montajda "çakışma var mı" sorusunun cevabı <strong>datum'a</strong> bağlı çıktı. Aynı dört delik hizası, yalnız montaj mesafesi (X0) değiştirilerek tarandı:</p>
+<table>
+<thead>
+<tr>
+<th>X0 (mm)</th>
+<th>Çakışma (mm³)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>177,0</td>
+<td>37,46</td>
+</tr>
+<tr>
+<td>178,0</td>
+<td>19,26</td>
+</tr>
+<tr>
+<td>179,0</td>
+<td>9,16</td>
+</tr>
+<tr>
+<td>179,5</td>
+<td>5,59</td>
+</tr>
+<tr>
+<td>180,0</td>
+<td>2,51</td>
+</tr>
+<tr>
+<td>180,5 – 186,0</td>
+<td><strong>0,00</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Çakışmanın tamamı <code>COMPOUND126</code> (tutucu plaka) ile <code>Sensor_Modul</code> arasında. Yani "0 mm³" demek için önce <strong>hangi mesafede</strong> olduğunu söylemek gerekiyor. Parça geometrisi değişince (FPC konnektör arkaya alındı, +0,8 mm arka çıkıntı) sonuç yine 0,00 çıktı (X0 = 179,5…181,5 · 0,25 adım) — konnektör, tutucunun çıkıntılı bağlantı bölgesine denk geldiği için değmiyor. Bu, ancak gerçek tutucu geometrisiyle ölçülebildi.</p>
+<h3 id="yanlış-negatif-dersi-desen-taraması">Yanlış negatif dersi: desen taraması</h3>
+<p>"Rig'de 21 × 12,5 deseni var mı?" taraması ilk turda <strong>0 eşleşme</strong> verdi ve "sadece adaptör yaparız" varsayımını doğurdu. Sebep iki taneydi: tarama yalnız <strong>düşey eksenli</strong> silindirleri süzüyordu, ayrıca çıktı ilk 60 satırda kırpılıyordu. Gerçek desen <strong>X ekseninde</strong>, (Y;Z) = (−8;137,94) · (−8;150,44) · (13;137,94) · (13;150,44). Bugünün kuralı: desen taraması <strong>tüm eksen gruplarında</strong> koşar ve çıktı <strong>kırpılmaz</strong> (özet ekrana, tam liste dosyaya, kırpıldıysa rapora "kırpıldı" yazılır).</p>
+<h2 id="örnek-3--raspberry-pi-5-kutusu-uçtan-uca-tur">Örnek 3 — Raspberry Pi 5 kutusu: uçtan uca tur</h2>
+<p>Kendi kendine yeten örnek, zinciri baştan sona koşar: <code>schema → join → bom → renders → kanit</code>. Bugünkü model <strong>iki parça</strong>: <code>Govde</code> <strong>64.265,681 mm³</strong>, <code>Kapak</code> <strong>22.439,124 mm³</strong>; birleşim <strong>86.704,805 mm³</strong>, bbox <code>[163, 91, 43]</code> mm. Ölçüm 27.10.2026'da belgeden geri okunarak yenilendi: çakışma <strong>0,000000 mm³</strong>, <code>Σ parça − birleşim</code> <strong>0,000000 mm³</strong>.</p>
+<p>Kapıların hükmü ayrı ayrı: <code>join</code> <strong>temiz</strong> (8/18 delik eşleşti; karşılıksız 10 delik "duvar" sınıfında serbest bildirildi), <code>render</code> <strong>9/9 geçit</strong> (üç belge × üç bakış, taşma 0; ölçüm 23.10.2026).</p>
+<p><img src="https://onkanat.github.io/blog/img/cad-bridge/pi5box-iso.png" alt="Pi 5 kutusu gövdesi — izometrik" /> <em>Gövde: delikler, kanallar ve ayak izleri tek betikten. Çizim <code>pi5box_govde-iso</code> bakışından.</em></p>
+<p><img src="https://onkanat.github.io/blog/img/cad-bridge/pi5box-montaj.png" alt="Pi 5 kutusu — iki parçalı montaj" /> <em>Gövde + kapak: çakışma 0,000000 mm³, Σ parça = birleşim. Çizim <code>pi5box_2parca-iso</code> bakışından.</em></p>
+<h2 id="sınırlar--abartmadan">Sınırlar — abartmadan</h2>
+<ul>
+<li><strong>Hazır fillet/chamfer komutu yok.</strong> Yuvarlatma modeli kuran betikte <code>Shape.makeFillet</code> ile yapılıyor; cad-bridge'in "köşe yuvarlat" diye bir komutu ya da kapısı yok (<code>cadbridge/</code>, <code>backends/</code>, <code>tools/</code> içinde <code>fillet</code> yalnız bir hata ipucunda geçiyor).</li>
+<li><strong>8 MCP aracının hiçbiri modeli düzenlemez.</strong> <code>cad_open → cad_script/cad_export → cad_inspect → cad_render → cad_diff</code> (+<code>sayfa</code>, <code>doctor</code>): ölçer, çizer, karşılaştırır; modeli değiştirmez.</li>
+<li><strong>30 saniye tavanı.</strong> Tek <code>FreeCADCmd</code> çağrısı 30 sn'de kesiliyor. Tam montajı (161 katı) çizmeye kalkışınca zarf <code>E_TIMEOUT</code> döndü; çözüm işi küçültmek (parça bazlı render) ya da önizleme üretmek.</li>
+<li><strong><code>transformGeometry</code> sonrası bbox şişer.</strong> Namlu ø10,17 iken bbox 15,26 mm göründü — bbox ölçü olarak raporlanmıyor.</li>
+</ul>
+<h2 id="sırada-seç--tarif-et-karar-verildi-uygulanmadı">Sırada: "seç + tarif et" (karar verildi, uygulanmadı)</h2>
+<p>Hedef tek cümle: kullanıcı FreeCAD'de parçayı seçer, konsola <em>"bu gövdenin köşelerine 5 radius"</em> yazar; makro bunu <strong>parametreye</strong> çevirir, betikten yeniden üretir, kapıları koşar, önizleme + <code>diff</code> gösterir ve <strong>onay</strong> alır. Seçilen gövde cad-bridge üretimi değilse makro açıkça <strong>"bunu ben yapmadım"</strong> der ve yalnız ölçüm/çizim yapar.</p>
+<p>Bu bir tasarım kararı (K11), <strong>uygulama yok</strong>. Bugün çalışan şey motor: sayı değişir → model yeniden üretilir → çakışma yeniden ölçülür → kanıt dosyaya düşer.</p>
+<h2 id="kapanış">Kapanış</h2>
+<p>Bu hattın değeri "ajan çizim yaptı" değil; <strong>hangi sayının ölçüm, hangisinin tahmin olduğunu</strong> ve bir işin hangi eşikle geçtiğini yazması. Bir CAD modeli tartışmaya açıldığında ilk soru "güzel mi" değil, <strong>"hangi ölçüyle, hangi datumla, hangi kapıdan geçti"</strong> olmalı.</p>
+<p>Yeniden üretmek için:</p>
+<pre class="console"><code>$ python -m cadbridge --surum
+$ python -m cadbridge gates --list
+$ python -m cadbridge renders &lt;model&gt;.FCStd --out-dir cikti/
+$ python -m cadbridge join &lt;model&gt;.FCStd</code></pre>
+</article>
+<p><a href="https://onkanat.blogspot.com/2026/10/prompttan-kantl-modele-hermes-cad.html">Yazının blog adresi</a></p>

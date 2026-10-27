@@ -1,0 +1,147 @@
+<!doctype html><html lang=tr><meta charset=utf-8><title>Bölüm 1 — cad-bridge: "ajan çizdi" demek yetmiyor</title>
+<article>
+<p><em>İki bölümlük dizinin birincisi. İkinci bölüm — <strong>"Prompt'tan kanıtlı modele: Hermes + cad-bridge + FreeCAD"</strong> — yayında: <a href="https://onkanat.blogspot.com/2026/10/prompttan-kantl-modele-hermes-cad.html">https://onkanat.blogspot.com/2026/10/prompttan-kantl-modele-hermes-cad.html</a></em></p>
+<p>Bu bölüm aracın <strong>kendisini</strong> anlatıyor: neyi çözüyor, hangi sözleşmeyle çalışıyor, nerede susuyor. İkinci bölüm aynı aracın <strong>ölçüm kayıtlarını</strong> açıyor: bir sayının nereden geldiğini, hangi eşikle geçtiğini ve nerede yanıldığını.</p>
+<h2 id="1-sorun--model-üretmek-kolay-hüküm-vermek-zor">1. Sorun — model üretmek kolay, hüküm vermek zor</h2>
+<p>FreeCAD'in Python konsolu güçlü. Ama bir ajana "şu parçayı çiz" dendiğinde üç şey aynı anda bozulur:</p>
+<ul>
+<li><strong>Kimlik kayar.</strong> Seçim kenar/yüz numarasıyla yapılır (<code>Fillet.Edges = [(3, 2.0)]</code>); model bir kez değiştiğinde 3 numara başka kenarı gösterir. Aynı komut sessizce başka bir parça üretir.</li>
+<li><strong>İz kalmaz.</strong> Konsolda yazılanlar modelin yanında durmaz; "hangi sürümü çizdik" sorusu dosya adına düşer.</li>
+<li><strong>Hüküm gözle verilir.</strong> "Oldu" diyen ajanla "ölçtüm, eşiği geçti" diyen ajanı ayıracak bir alan yoktur.</li>
+</ul>
+<p>cad-bridge üçünü tek tek yamamak yerine sözleşmeyi değiştiriyor: model bir betikten üretilir, her komut <strong>tek zarf</strong> döner ve "geçti/kaldı" bilgisi serbest metin değil, <code>sonuc.gecti</code> <strong>bool</strong>'udur.</p>
+<h2 id="2-cad-bridge-dört-parçadan-oluşur">2. cad-bridge dört parçadan oluşur</h2>
+<table>
+<thead>
+<tr>
+<th>Parça</th>
+<th>Ne</th>
+<th>Sayı</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kapı defteri</td>
+<td>Ad + sürüm + eşik + hata kodu taşıyan tek kayıt</td>
+<td>10 kapı</td>
+</tr>
+<tr>
+<td>Komut satırı</td>
+<td>Tek giriş noktası; hesabı kopyalamaz, mevcut işlevi sarar</td>
+<td>10 komut</td>
+</tr>
+<tr>
+<td>Ajan yüzeyi</td>
+<td>MCP araçları; ölçer, çizer, karşılaştırır</td>
+<td>8 araç</td>
+</tr>
+<tr>
+<td>Zarf sözleşmesi</td>
+<td><code>ok · code · message · artifacts[] · metrics{} · hint · duration_ms</code></td>
+<td>18 kod</td>
+</tr>
+</tbody>
+</table>
+<p>Bunların üstünde dört kelimelik bir sözlük var:</p>
+<ul>
+<li><strong>parça</strong> — modeli kuran betik ve onun sözleşmesi (<code>parca.json</code>).</li>
+<li><strong>zarf</strong> (<em>envelope</em>) — komutun tek çıktısı: hüküm, kanıt ve ipucu aynı yerde.</li>
+<li><strong>kapı</strong> (<em>gate</em>) — ölçüm + eşik + hata kodu; geçmezse zarf <code>ok=false</code> döner.</li>
+<li><strong>kanıt</strong> (<em>evidence</em>) — <code>kanit/*.json</code>: girdi sha256, ölçümler, eşikler, süre.</li>
+</ul>
+<h2 id="3-bir-tur-nasıl-geçer">3. Bir tur nasıl geçer</h2>
+<p>Kurulumdan sonra önce tek şey kontrol edilir: araç yerinde mi?</p>
+<pre class="console"><code>$ python -m cadbridge --surum
+cad-bridge 0.2.1
+
+$ python -m cadbridge gates --list
+OK: 10 kapı (defter sürüm 2): bom, eksen, hedef, join, lane, math, render, render-check, schema, varyant</code></pre>
+<p>Sonra zincir: <code>schema → join → bom → renders → kanit</code>. Her halkanın tek bir sorusu var — parça sözleşmeye uyuyor mu, delikler karşılıklı mı, BOM ile model aynı sayıyı mı söylüyor, çizim modelle uyuşuyor mu, kanıt dosyası sözleşmeyi tutuyor mu.</p>
+<h2 id="4-kapılar--ölçülen-nedir-eşik-nerede">4. Kapılar — ölçülen nedir, eşik nerede</h2>
+<table>
+<thead>
+<tr>
+<th>Kapı</th>
+<th>Ne ölçer</th>
+<th>Eşik</th>
+<th>Kod</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bom</code></td>
+<td>parça tablosu ↔︎ model sayısı</td>
+<td>adet farkı 0</td>
+<td><code>E_BOM</code></td>
+</tr>
+<tr>
+<td><code>eksen</code></td>
+<td>eksen/çerçeve tutarlılığı</td>
+<td>0,02 · tam dikey 0,999</td>
+<td><code>E_AXIS</code></td>
+</tr>
+<tr>
+<td><code>hedef</code></td>
+<td>hacim ↔︎ hedef hacim</td>
+<td>%0,5</td>
+<td><code>E_HEDEF</code></td>
+</tr>
+<tr>
+<td><code>join</code></td>
+<td>her vida deliğinin karşıtı var mı</td>
+<td>dik 0,5 mm · çap 2,0 mm</td>
+<td><code>E_JOIN</code></td>
+</tr>
+<tr>
+<td><code>lane</code></td>
+<td>ajan şerit kilidinin tazeliği</td>
+<td>7200 sn</td>
+<td><code>E_LANE</code></td>
+</tr>
+<tr>
+<td><code>math</code></td>
+<td>elle türetilen değer ↔︎ CAD ölçümü</td>
+<td>%0,5</td>
+<td><code>E_MATH</code></td>
+</tr>
+<tr>
+<td><code>render</code></td>
+<td>çizim ↔︎ model kesik sayısı</td>
+<td>kesik farkı 0</td>
+<td><code>E_RENDER</code></td>
+</tr>
+<tr>
+<td><code>render-check</code></td>
+<td>çizim gerçekten modeli kapsıyor mu</td>
+<td>örtülme 2,0 mm</td>
+<td><code>E_RENDER</code></td>
+</tr>
+<tr>
+<td><code>schema</code></td>
+<td><code>parca.json</code> sözleşmesi</td>
+<td>kaynak toleransı</td>
+<td><code>E_SCHEMA</code></td>
+</tr>
+<tr>
+<td><code>varyant</code></td>
+<td>iki konfigürasyon çakışıyor mu</td>
+<td>0,5 mm³</td>
+<td><code>E_VARYANT</code></td>
+</tr>
+</tbody>
+</table>
+<p>On kapı, dokuz farklı kod: <code>render</code> ve <code>render-check</code> aynı <code>E_RENDER</code>'ı paylaşır.</p>
+<h2 id="5-neyi-yapmaz">5. Neyi yapmaz</h2>
+<ul>
+<li><strong>GUI açmaz, model düzenlemez.</strong> Sekiz MCP aracının hiçbiri geometriyi değiştirmez; hepsi ölçer, çizer, karşılaştırır.</li>
+<li><strong>Hazır "köşe yuvarlat" komutu yok.</strong> Yuvarlatma, modeli kuran betikte <code>Shape.makeFillet</code> ile yapılır; kapı defterinde fillet/chamfer adlı bir kapı yok.</li>
+<li><strong>Tek çağrı otuz saniyeyle sınırlı.</strong> Tam montajı tek seferde çizmek yerine iş parçalanır: <code>E_TIMEOUT</code> bir arıza değil, tasarım sınırıdır.</li>
+<li><strong>bbox'a güvenilmez.</strong> <code>transformGeometry</code> sonrası sınır kutusu şişer; ölçü hacimden/geometriden okunur.</li>
+</ul>
+<h2 id="6-durum">6. Durum</h2>
+<p>Ölçüm <strong>24.10.2026</strong>, sürüm <strong>0.2.1</strong>: 10 kapı, 10 komut, 8 MCP aracı, 18 zarf hata kodu, 948 test geçti (15 atlandı, 1 beklenen başarısız). Bu sayılar <strong>elle yazılmaz</strong>: aracın durum bloğunu komut üretir, bayatlarsa kontrol komutu hata verir. Bu yüzden sayıyı bir yerden alıntılamak değil, komutu koşmak esastır — ikinci bölümün konusu tam olarak bu.</p>
+<p><img src="https://onkanat.github.io/blog/img/cad-bridge/pi5box-iso.png" alt="pi5-box izometrik görünüm" /> <em>Tek betikten üretilmiş gövde: delikler, kanallar ve ayak izleri. Çizim, modelin kendi geometrisinden.</em></p>
+<h2 id="7-i̇kinci-bölüm">7. İkinci bölüm</h2>
+<p>İkinci bölüm aynı hattın kanıt tarafını açıyor: ø12,7 → ø10,17 düzeltmesi (2,5 mm), çakışmanın datum'a bağlı aralığı, desen taramasındaki yanlış negatif ve iki parçalı Pi5 kutusunun uçtan uca turu. Yazı: <a href="https://onkanat.blogspot.com/2026/10/prompttan-kantl-modele-hermes-cad.html">https://onkanat.blogspot.com/2026/10/prompttan-kantl-modele-hermes-cad.html</a></p>
+</article>
+<p><a href="https://onkanat.blogspot.com/2026/10/bolum-1-cad-bridge-ajan-cizdi-demek.html">Yazının blog adresi</a></p>

@@ -1,0 +1,35 @@
+<!doctype html><html lang=tr><meta charset=utf-8><title>OpenSCAD</title>
+<article>
+<h2>Özet</h2>
+<p>OpenSCAD, modeli fareyle değil <strong>kodla</strong> kurduğunuz açık kaynaklı 3B modelleme aracıdır. Küp, silindir gibi temel şekilleri birleştirip çıkararak (CSG) parça yaparsınız. Tekrarlanabilir, parametrik ve sürüm kontrolüne uygun modelleme isteyenler için doğru araç.</p>
+<h2>Neden özgür?</h2>
+<p>Lisansı özgür (GPL). Model bir metin dosyasıdır: git ile saklar, bir değişkeni değiştirip modeli yeniden üretirsiniz. Tasarım başkasının kapalı formatına kilitlenmez.</p>
+<h2>Temel özellikler</h2>
+<ul>
+<li><strong>CSG:</strong> birleştir (<code>union</code>), çıkar (<code>difference</code>), kesişim (<code>intersection</code>)</li>
+<li><strong>Parametrik model:</strong> değişken, döngü, fonksiyon ve <code>module</code></li>
+<li><strong>Çözünürlük kontrolü:</strong> <code>$fn</code> ile yumuşaklık; önizleme/render ayrımı</li>
+<li><strong>Dışa aktarım:</strong> STL, 3MF, AMF, DXF, SVG</li>
+<li><strong>Küçük dil:</strong> öğrenmesi hızlı, az komutla çok iş</li>
+<li><strong>2B çizim:</strong> <code>linear_extrude</code> ve <code>rotate_extrude</code> ile profil döndürme</li>
+</ul>
+<h2>İlk adım</h2>
+<ol>
+<li>Kur, yeni dosyayı aç.</li>
+<li><code>cube([20, 20, 10]);</code> yaz, önizle (F5).</li>
+<li><code>difference()</code> ile içine delik aç.</li>
+<li>En/boy gibi değerleri değişkene al.</li>
+<li>Render (F6) ve STL olarak dışa aktar.</li>
+</ol>
+<h2>Kimler için</h2>
+<p>3B baskı yapanlar, kod yazmayı sevenler, ölçüyle oynayarak hızlı varyant üretenler.</p>
+<h2>Ekosistem</h2>
+<ul>
+<li><a href="https://www.onkanat.org/freecad">FreeCAD</a>: karmaşık montajı FreeCAD'de, sade parametrik parçayı OpenSCAD'de kurarsınız.</li>
+<li><a href="https://www.onkanat.org/inkscape">Inkscape</a>: lazer/DXF için 2B profil ve SVG üretirsiniz.</li>
+<li><a href="https://www.onkanat.org/jupyter">Jupyter</a>: parametreleri not defterinde hesaplayıp modele verirsiniz.</li>
+</ul>
+<p><strong>Lisans:</strong> GPL-2.0 — özgür.</p>
+<p><strong>Kaynak:</strong> https://openscad.org/</p>
+</article>
+<p><a href="https://onkanat.blogspot.com/2026/10/openscad.html">Yazının blog adresi</a></p>

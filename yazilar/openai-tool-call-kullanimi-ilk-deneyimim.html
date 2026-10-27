@@ -1,0 +1,147 @@
+<!doctype html><html lang=tr><meta charset=utf-8><title>OpenAI Tool Call Kullanımı – İlk Deneyimim</title>
+<article>
+<p class="p1"><br /></p>
+<p class="p2"><span class="s2"></span></p><hr /><p></p>
+<p class="p2"><span class="s2"></span></p><h2><b>OpenAI Tool Call Kullanımı – İlk Deneyimim</b></h2><p></p>
+<p class="p3"><br /></p>
+<p class="p1">Bu yazıda, OpenAI’nin <span class="s3">tool call</span> özelliğini kullanarak nasıl yerel bir LLM (Large Language Model) ile fonksiyon çağrısı yapılabileceğini anlatacağım. Özellikle <span class="s1"><b>LM Studio</b></span> gibi bir yerel LLM altyapısı ile nasıl etkileşime geçildiğini gösteren basit bir örnek sunuyorum.</p>
+<p class="p3"><br /></p>
+<p class="p1">Aşağıdaki kod, bir kullanıcının sipariş teslimat tarihini öğrenmek istediği durumda, LLM’nin <span class="s3">get_delivery_date</span> adlı bir fonksiyonu çağırmasını sağlamaktadır.</p>
+<p class="p2"><span class="s2"></span></p><hr /><p></p>
+<p class="p2"><span class="s2"></span></p><h3><b>📦 Kod: Tool Call Örneği</b></h3><p></p>
+
+
+<pre><code>from datetime import datetime, timedelta
+import json
+import random
+from openai import OpenAI
+
+# Yerel LLM sunucusuna bağlantı
+client = OpenAI(base_url="http://localhost:1234/v1", api_key="lm-studio")
+model = "qwen2.5-coder-7b-instruct"
+
+# Teslimat tarihi hesaplayan fonksiyon
+def get_delivery_date(order_id: str) -&gt; datetime:
+    today = datetime.now()
+    random_days = random.randint(1, 14)
+    delivery_date = today + timedelta(days=random_days)
+    print(f"\nget_delivery_date function returns delivery date:\n\n{delivery_date}", flush=True)
+    return delivery_date
+
+# LLM'nin kullanacağı araç/fonksiyon tanımı
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_delivery_date",
+            "description": "Get the delivery date for a customer's order.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "order_id": {
+                        "type": "string",
+                        "description": "The customer's order ID.",
+                    },
+                },
+                "required": ["order_id"],
+                "additionalProperties": False,
+            },
+        },
+    }
+]
+
+# LLM'ye gönderilecek mesajlar
+messages = [
+    {
+        "role": "system",
+        "content": "You are a helpful customer support assistant. Use the supplied tools to assist the user.",
+    },
+    {
+        "role": "user",
+        "content": "bana cevap verirken tool_calls ifadesini True yap. ?",
+    },
+]
+
+# LLM'den cevap alma
+response = client.chat.completions.create(
+    model=model,
+    messages=messages,
+    tools=tools,
+)
+
+print("\nModel response requesting tool call:\n", flush=True)
+print(response, flush=True)
+
+# Tool call yapılıp yapılmadığını kontrol et
+if response.choices[0].message.tool_calls:
+    tool_call = response.choices[0].message.tool_calls[0]
+    arguments = json.loads(tool_call.function.arguments)
+    print("\nExtracted arguments for get_delivery_date:\n", arguments, flush=True)
+else:
+    print("\nNo tool call made by the model.", flush=True)</code></pre>
+
+
+<p class="p1"><br /></p>
+<p class="p2"><span class="s1"></span></p><hr /><p></p>
+<p class="p2"><span class="s1"></span></p><h3><b>🧠 Açıklamalar</b></h3><p></p>
+<p class="p1"><b>1. Kütüphaneler</b></p><p></p>
+<p class="p2"><span class="s1"></span></p><ul><li>
+<p class="p1"><span class="s1">datetime</span>, <span class="s1">timedelta</span>: Tarih/zaman işlemleri</p>
+</li><li>
+<p class="p1"><span class="s1">json</span>: JSON verilerini ayrıştırmak için</p>
+</li><li>
+<p class="p1"><span class="s1">random</span>: Teslimat tarihini rastgele üretmek için</p>
+</li><li>
+<p class="p1"><span class="s1">openai</span>: OpenAI API istemcisi</p>
+</li></ul><p></p>
+<p class="p1"><b>2. OpenAI İstemcisi Tanımlama</b></p><p></p>
+<p class="p1">Kod, LM Studio gibi yerel çalışan bir OpenAI uyumlu sunucuya bağlanmak için <span class="s2">base_url</span> ve <span class="s2">api_key</span> ile <span class="s2">OpenAI</span> istemcisini oluşturur. <span class="s3"><b>Bu yapı doğrudan OpenAI sunucusuna değil, yerel bir LLM servisine bağlanır.</b></span></p>
+<p class="p1"><b>3.<span class="Apple-converted-space">&nbsp;</span></b><b>get_delivery_date&nbsp;</b><b>Fonksiyonu</b></p><p></p>
+<p class="p1">Bu fonksiyon örnek amaçlıdır ve <span class="s2">order_id</span> ile 1-14 gün sonrasına rastgele bir tarih döner. Gerçek sistemde bir veritabanı sorgusu yapılması beklenir.</p>
+<p class="p1"><b>4. Araç Tanımı (</b><b>tools</b><b>)</b></p><p></p>
+<p class="p1">LLM’ye kullanılabilir fonksiyonları anlatan bir JSON yapılandırmasıdır. Fonksiyon adı, açıklama ve parametreler yer alır.</p>
+<p class="p1"><b>5. Mesajlar (</b><b>messages</b><b>)</b></p><p></p>
+<p class="p1">LLM’ye gönderilecek kullanıcı ve sistem mesajları burada belirlenir.</p>
+<p class="p1"><b>6. Yanıtın İşlenmesi</b></p><p></p>
+<p class="p1"><br /></p>
+<p class="p3">Model yanıtında <span class="s2">tool_calls</span> olup olmadığı kontrol edilir. Fonksiyon çağrılmışsa parametreler ayrıştırılır ve yazdırılır.</p>
+<p class="p2"><span class="s1"></span></p><hr /><p></p>
+<p class="p2"><span class="s1"></span></p><h3><b>✅ Güçlü Yönler</b></h3><p></p>
+<p class="p2"><span class="s1"></span></p><ul><li>
+<p class="p1">Tool Call kullanımını açıkça gösterir.</p>
+</li><li>
+<p class="p1">Yerel LLM ile nasıl etkileşime geçileceğini sunar.</p>
+</li><li>
+<p class="p1">Fonksiyonel ve okunabilir bir örnek</p>
+</li><li>
+<p class="p1">Hataları kontrol etmek için temel mekanizma var</p>
+</li></ul><p></p>
+<p class="p2"><span class="s1"></span></p><hr /><p></p>
+<p class="p2"><span class="s1"></span></p><h3><b>⚠️ Geliştirilebilecek Yönler</b></h3><p></p>
+<p class="p2"><span class="s1"></span></p><ul><li>
+<p class="p1"><span class="s1">get_delivery_date</span>, rastgele tarih döndürüyor; gerçekçi değil.</p>
+</li><li>
+<p class="p1"><span class="s1">json.loads()</span> gibi işlemler hata yönetimiyle sarmalanmalı.</p>
+</li><li>
+<p class="p1"><span class="s1">order_id</span> örneği kullanıcıdan alınabilir veya örnek olarak tanımlanmalı.</p>
+</li></ul><p></p>
+<p class="p2"><span class="s1"></span></p><hr /><p></p>
+<p class="p2"><span class="s1"></span></p><h3><b>🎯 Uygulama Alanları</b></h3><p></p>
+<p class="p1"><br /></p>
+<p class="p3">Bu sistem şu amaçlar için kullanılabilir:</p>
+<p class="p2"><span class="s1"></span></p><ul><li>
+<p class="p1">Yerel belge klasörlerinden veri işlemek</p>
+</li><li>
+<p class="p1">Kullanım kılavuzu veya ürün destek sistemi oluşturmak</p>
+</li><li>
+<p class="p1">Yerel veritabanlarından bilgi sorgulamak</p>
+</li></ul><p></p>
+<p class="p2"><span class="s1"></span></p><hr /><p></p>
+<p class="p2"><span class="s1"></span></p><h3><b>🔚 Sonuç</b></h3><p></p>
+<p class="p1"><br /></p>
+<p class="p3">OpenAI Tool Call özelliği sayesinde büyük dil modelleriyle fonksiyonel etkileşim kurmak mümkündür. Yerel modellerle entegre çalışmak, özel kullanım senaryoları ve düşük maliyetli uygulamalar açısından oldukça değerlidir.</p>
+<p class="p2"><span class="s1"></span></p><hr /><p></p>
+<p class="p3"><span class="s3"><b>💡 Not:</b></span> Bu yazıdaki örnek <span class="s2">LM Studio</span> gibi bir yerel model platformunu temel alır ve doğrudan OpenAI bulut hizmetlerinden farklı bir kullanım yaklaşımı içerir.</p>
+<p class="p2"><span class="s1"></span></p><br /><br />
+</article>
+<p><a href="https://onkanat.blogspot.com/2025/01/bu-benim-ilk-tool-call-komutum-ve.html">Yazının blog adresi</a></p>

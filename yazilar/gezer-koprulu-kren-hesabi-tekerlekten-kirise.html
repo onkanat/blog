@@ -1,0 +1,491 @@
+<!doctype html><html lang=tr><meta charset=utf-8><title>Gezer Köprülü Kren Hesabı: Tekerlekten Kirişe</title>
+<article>
+<h1 id="gezer-köprülü-kren-hesabı-tekerlekten-kirişe">Gezer Köprülü Kren
+Hesabı: Tekerlekten Kirişe</h1>
+<h2 id="özet">Özet</h2>
+<p>Atölye krenleri üç doğrultuda yük taşır: araba kaldırır, köprü
+üzerinde yürür, köprü kren yolu boyunca gider. Bu yazı, 10 ton kaldırma
+kapasiteli, 20 metre açıklıklı bir <strong>gezer köprülü krenin</strong>
+hesap zincirini baştan sona yürütüyor: tekerlek çapları, yürütme
+motorları, esas kirişin kesiti, sehimi, eğilme gerilmesi ve baş
+kiriş.</p>
+<p>Hesabın tamamı iki açık kaynak dilde koda döküldü: <strong>Modern
+Fortran</strong> ve <strong>GNU Octave</strong>. İki program aynı
+formülleri kullanır ve <strong>101 satırlık sayısal çıktısı birebir
+aynıdır</strong> — dil değişir, hesap değişmez. Kod, VAKIF eğitim
+depolarında açık:</p>
+<ul>
+<li>Fortran: <a
+href="https://github.com/onkanat/fortran/blob/main/gezer_kren_hesabi.f90">gezer_kren_hesabi.f90</a>
+· anlatım: <a
+href="https://onkanat.github.io/fortran/gezer_kren_hesabi.html">onkanat.github.io/fortran/gezer_kren_hesabi.html</a></li>
+<li>Octave: <a
+href="https://github.com/onkanat/Octave_TR_Doc/blob/master/gezer_kren_hesabi.m">gezer_kren_hesabi.m</a>
+· anlatım: <a
+href="https://onkanat.github.io/Octave_TR_Doc/gezer_kren_hesabi.html">onkanat.github.io/Octave_TR_Doc/gezer_kren_hesabi.html</a></li>
+</ul>
+<p>Kaynak metin, “Gezer Kren Köprüsü Konstrüksiyonu ve Hesabı” (EK-A2)
+başlıklı bölüm. Aşağıdaki bütün şekiller o metinden alınmıştır; sayılar
+ise koddan üretilmiştir — hiçbiri elle yazılmadı.</p>
+<h2 id="neden-bu-hesap">Neden bu hesap</h2>
+<p>Kren hesabı, “kaç kW motor” sorusundan ibaret değildir. Zincir şu
+sırayla kilitlenir:</p>
+<ol type="1">
+<li><strong>Tekerlek</strong> yükü taşır → çap, ray temas basıncına göre
+seçilir (DIN 15070).</li>
+<li><strong>Motor</strong> tekerleği döndürür → yürüme + ivme direnci,
+verim ve emniyet katsayılarıyla.</li>
+<li><strong>Esas kiriş</strong> yükü taşır → önce <strong>sehim</strong>
+sınırı (kren salınımını önler), sonra <strong>gerilme</strong>
+sınırı.</li>
+<li><strong>Baş kiriş</strong> köprüyü tekerleklere bağlar → yatak
+kuvveti, moment, profil seçimi.</li>
+</ol>
+<p>Sıra atlanırsa tipik hata şudur: kesit gerilmeye göre seçilir, sehim
+hesabı sonradan “kontrol” diye eklenir ve sınırın aşıldığı görülür. Bu
+örnekte tam tersi oluyor: sehim <strong>belirleyici</strong> kalem,
+gerilme ise %60 dolulukta kalıyor.</p>
+<figure>
+<img src="https://onkanat.github.io/blog/img/gezer-kren/sekil1.png"
+alt="Köprülü kren şematik resmi" />
+<figcaption aria-hidden="true">Köprülü kren şematik resmi</figcaption>
+</figure>
+<p><em>Şekil 1 — Köprülü kren: araba köprü üzerindeki raylarda, köprü
+kren yolu boyunca hareket eder; yük üç doğrultuda taşınır.</em></p>
+<h2 id="veriler-ve-kabuller">Veriler ve kabuller</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Büyüklük</th>
+<th>Değer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kaldırma yükü</td>
+<td><code>Q_K = 10 000</code> kg</td>
+</tr>
+<tr>
+<td>Araba ağırlığı (kanca + halat dahil)</td>
+<td><code>G_A = 2 800</code> kg</td>
+</tr>
+<tr>
+<td>Köprü açıklığı</td>
+<td><code>L_K = 20</code> m</td>
+</tr>
+<tr>
+<td>Esas kiriş birim ağırlığı</td>
+<td><code>400</code> kg/m (iki kiriş) → <code>G_K = 16 000</code>
+kg</td>
+</tr>
+<tr>
+<td>Hızlar</td>
+<td>kaldırma 5, araba 20, köprü 40 m/dak</td>
+</tr>
+<tr>
+<td>Kullanım</td>
+<td>atölye kreni, orta işletme, yük sınıfı <strong>H2</strong></td>
+</tr>
+<tr>
+<td>Malzeme</td>
+<td>St 37 → <code>sigma_em = 1600</code> daN/cm² (160 N/mm²)</td>
+</tr>
+<tr>
+<td>Elastisite modülü</td>
+<td><code>E = 2,1e6</code> daN/cm²</td>
+</tr>
+<tr>
+<td>Yük katsayıları</td>
+<td><code>phi = 1,1</code> (zati ağırlık), <code>psi = 1,3</code>
+(H2)</td>
+</tr>
+</tbody>
+</table>
+<p>Birimler belgedeki gibi: kuvvet <strong>daN</strong>, uzunluk
+<strong>cm</strong> (açıklık m), gerilme <strong>daN/cm²</strong>. 1 kg
+yük 1 daN alınır; bu, kren hesabında yaygın ve yeterli bir
+yaklaşımdır.</p>
+<h2 id="araba-tekerlekleri">1. Araba tekerlekleri</h2>
+<p>Arabanın dört tekerleğine gelen yük:</p>
+<p><code>R_A = (Q_K + G_A)/4 = (10 000 + 2 800)/4 = 3 200 daN</code></p>
+<p>DIN 15070’e göre tekerlek çapı, ray temas basıncıyla sınırlanır:</p>
+<p><code>D_A = R_A / (p_em * C2 * C3 * b)</code></p>
+<p>Burada <code>p_em = 56 * C1</code> malzeme katsayısıyla ölçeklenir.
+Yassı ray (50×40) için temas genişliği <code>b = 4,0</code> cm, devir
+katsayısı <code>C2 = 1,03</code> (25 d/d), çalışma süresi katsayısı
+<code>C3 = 1</code> (%30):</p>
+<p><code>D_A = 3 200 / (35,28 * 1,03 * 1 * 4,0) = 22,02 cm ≈ 220 mm</code></p>
+<p>Standart çaplar 200 ve 250 mm olduğu için seçim <strong>250
+mm</strong> olur. Tekerlek devri 25 d/d kaldığında araba hızı
+<code>V = D*pi*n = 0,25*3,14*25 = 19,6 ≈ 20</code> m/dak çıkar — yani
+seçilen standart çap, istenen hızla tutarlıdır.</p>
+<h2 id="köprü-tekerlekleri-iki-yol-tek-çap">2. Köprü tekerlekleri: iki
+yol, tek çap</h2>
+<p>Köprü tekerleği için en elverişsiz durum, <strong>arabanın baş
+kirişlerden birine tamamen yanaşması</strong>dır (<code>L_a = 1</code>
+m):</p>
+<p><code>R_köp = 1/2 * [ (Q_K + G_A)*(L_K - L_a)/L_K + G_K/2 ] = 1/2 * [12 800*0,95 + 8 000] = 10 080 daN</code></p>
+<p>Çap iki ayrı yoldan bulunur ve <strong>iki yolun aynı standart çapta
+buluşması</strong> beklenir:</p>
+<ul>
+<li><strong>Gerilme yolu:</strong>
+<code>D = R/(p_em*C2*C3*(k-2r))</code>, <code>C1 = 0,80</code> (GS-52/St
+50) → <code>p_em = 44,8</code>, A55 rayı için <code>k-2r = 4,5</code> cm
+→ <code>D = 48,54 cm</code></li>
+<li><strong>Karakteristik yük yolu:</strong>
+<code>R0 = R/(C1*C2*C3) = 12 233 daN</code> → DIN 15070 tablosunda A55
+için 400 mm (10 100 daN) ile 500 mm (12 600 daN) arasında kalır → 500
+mm</li>
+</ul>
+<p>İki yol da <strong>500 mm</strong> veriyor. Buluşmasalardı
+katsayılardan biri yanlış girilmiş demekti; bu yüzden bu iki yol bir
+<strong>tutarlılık kapısıdır</strong>, süs değil.</p>
+<h2 id="yürütme-motorları">3. Yürütme motorları</h2>
+<p>Yürütme direnci iki bileşenden oluşur: tekerlek-ray sürtünmesi ve
+ivme (atalet).</p>
+<p><code>W_yür = n * (G/D) * (mu*d + 2f)</code>,
+<code>W_iv = n * (G/g) * a</code>, <code>N = W*V/(102*eta)</code></p>
+<table>
+<thead>
+<tr>
+<th>Kalem</th>
+<th>Araba</th>
+<th>Köprü</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Toplam yük</td>
+<td>12 800 daN</td>
+<td>28 800 daN</td>
+</tr>
+<tr>
+<td>Tekerlek / aks çapı</td>
+<td>250 / 50 mm</td>
+<td>500 / 90 mm</td>
+</tr>
+<tr>
+<td>Yürüme direnci</td>
+<td>307,2 daN</td>
+<td>566,8 daN</td>
+</tr>
+<tr>
+<td>İvme direnci</td>
+<td>391,4 daN</td>
+<td>1 409,2 daN</td>
+</tr>
+<tr>
+<td>Yürüme gücü</td>
+<td>1,18 kW</td>
+<td>4,36 kW</td>
+</tr>
+<tr>
+<td>İvme gücü</td>
+<td>1,50 kW</td>
+<td>10,84 kW</td>
+</tr>
+<tr>
+<td>Anma gücü</td>
+<td><strong>1,58 kW</strong> (1,7 bölen)</td>
+<td><strong>8,44 kW</strong> (1,8 bölen)</td>
+</tr>
+<tr>
+<td>Seçim</td>
+<td>1 adet 2,2 kW sınıfı</td>
+<td><strong>2 × 5,5 kW</strong> (senkron)</td>
+</tr>
+</tbody>
+</table>
+<p>Uzun açıklıklarda köprü iki motorla, iki baş kirişteki aynı hizadaki
+tekerleklere bağlanarak sürülür; iki motorun senkron çalışması köprünün
+eğrilmesini (skew) önler.</p>
+<figure>
+<img src="https://onkanat.github.io/blog/img/gezer-kren/sekil2.png"
+alt="Araba ve üzerindeki donanımlar" />
+<figcaption aria-hidden="true">Araba ve üzerindeki
+donanımlar</figcaption>
+</figure>
+<p><em>Şekil 2 — Araba: kaldırma mekanizması, tekerlek grubu ve tahrik.
+<code>Q_K + G_A</code> bu dört tekerlek üzerinden köprü raylarına
+geçer.</em></p>
+<h2 id="esas-kiriş-kesit-ve-sehim">4. Esas kiriş: kesit ve sehim</h2>
+<p>Köprü iki esas kirişten oluşur. Sehim sınırı, kren salınımını önlemek
+için konur ve açıklığa bağlıdır: <code>f_em = L/750</code>. 20 m için
+<code>f_em = 2,667</code> cm.</p>
+<p>Basit mesnetli kirişte toplam sehim iki yükten gelir — zati yayılı
+yük ve ortada tekil yük:</p>
+<p><code>f_top = L^3/(48*E*Iz) * [ (5/8)*G_K + (Q_K + G_A) ] / 2</code></p>
+<p>Sondaki <code>/2</code>, yükün iki kirişe paylaştırılmasıdır (her
+kiriş yükün yarısını taşır). Bu ifadeyi <code>f_top = f_em</code>
+yaparak <strong>gerekli atalet momenti</strong> bulunur:</p>
+<p><code>Iz_gerekli = 339 286 cm⁴</code> (tek kiriş)</p>
+<p>Seçilen kaynak-sac kesit (Şekil 4): <code>B = 500</code> mm,
+<code>H = 1000</code> mm, başlık <code>s = 12</code> mm, gövde
+<code>s0 = 8</code> mm, iç yükseklik <code>h = 976</code> mm:</p>
+<p><code>Iz = B*(H^3 - h^3)/12 + s0*h^3/12 = 354 839 cm⁴</code></p>
+<p>Yani kesit, gerekli değerin <strong>%4,6 üstünde</strong>; sehim
+<code>f_top = 2,5498</code> cm ile sınırın altında kalıyor. Mukavemet
+momentleri: <code>W_z = Iz/(H/2) = 7 097 cm³</code>,
+<code>W_y = 2*s*B^2/6 = 1 000 cm³</code>.</p>
+<figure>
+<img src="https://onkanat.github.io/blog/img/gezer-kren/sekil3.png"
+alt="Ana kiriş şematik resmi" />
+<figcaption aria-hidden="true">Ana kiriş şematik resmi</figcaption>
+</figure>
+<p><em>Şekil 3 — Basit mesnetli esas kiriş: tekil yük <code>G_t</code>,
+açıklık <code>L</code>, sehim <code>f</code>.</em></p>
+<figure>
+<img src="https://onkanat.github.io/blog/img/gezer-kren/sekil4.png"
+alt="Ana kiriş kesiti ve ölçüleri" />
+<figcaption aria-hidden="true">Ana kiriş kesiti ve ölçüleri</figcaption>
+</figure>
+<p><em>Şekil 4 — Esas kiriş kesiti: kaynak sac konstrüksiyon, iki başlık
++ gövde.</em></p>
+<p>Octave sürümü aynı kesiti çizer; ölçüler koddan gelir:</p>
+<figure>
+<img src="https://onkanat.github.io/blog/img/gezer-kren/kesit.png"
+alt="Octave ile çizilen kesit" />
+<figcaption aria-hidden="true">Octave ile çizilen kesit</figcaption>
+</figure>
+<p><em>Şekil 4b — Aynı kesit, Octave çıktısı: <code>patch</code> ile
+başlık ve gövde, <code>axis equal</code> ile ölçek korunur.</em></p>
+<h2 id="momentler-ve-eğilme-gerilmesi">5. Momentler ve eğilme
+gerilmesi</h2>
+<p>Bir kirişe gelen momentler (yükün yarısı hesaba katılarak):</p>
+<table>
+<thead>
+<tr>
+<th>Moment</th>
+<th>İfade</th>
+<th>Değer (daN·cm)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Zati yayılı yükten</td>
+<td><code>M_I = G_K*L/8</code></td>
+<td>4 000 000</td>
+</tr>
+<tr>
+<td>Araba ağırlığından</td>
+<td><code>M_II = G_A*L/4</code></td>
+<td>1 400 000</td>
+</tr>
+<tr>
+<td><strong>Toplam (M_T)</strong></td>
+<td><code>(M_I + M_II)/2</code></td>
+<td><strong>2 700 000</strong></td>
+</tr>
+<tr>
+<td>Kaldırma yükünden (M_K)</td>
+<td><code>Q_K*L/(4*2)</code></td>
+<td>2 500 000</td>
+</tr>
+<tr>
+<td>Atalet (fren/kalkış)</td>
+<td><code>M_AT = a*L/(16g)*[2(Q_K+G_A)+G_K]</code></td>
+<td>88 345</td>
+</tr>
+</tbody>
+</table>
+<p><code>a</code> ivmesi, köprü hızının kalkış süresine bölümüyle
+bulunur: <code>a = (40/60)/4 = 0,1667</code> m/s².</p>
+<p>Eğilme gerilmesi iki eksende toplanır:</p>
+<p><code>sigma = (phi*M_T + psi*M_K)/W_z + M_AT/W_y</code></p>
+<p><code>sigma = (1,1*2 700 000 + 1,3*2 500 000)/7 097 + 88 345/1 000 = 876,5 + 88,3 = 964,8 daN/cm² = 96,5 N/mm²</code></p>
+<p>St 37 için <code>sigma_em = 160</code> N/mm² → <strong>doluluk
+%60</strong>. St 52-3 seçilseydi doluluk %40’a inerdi. İkinci terim
+(<code>M_AT/W_y</code>) toplamın yaklaşık %9’u; sadece düşey eğilmeye
+bakmak hesabı iyimser yapar.</p>
+<figure>
+<img src="https://onkanat.github.io/blog/img/gezer-kren/sekil5.png"
+alt="Moment diyagramı" />
+<figcaption aria-hidden="true">Moment diyagramı</figcaption>
+</figure>
+<p><em>Şekil 5 — Yayılı yük <code>q</code>, kesme kuvveti
+<code>V(x)</code> ve eğilme momenti
+<code>M_maks = qL^2/8</code>.</em></p>
+<figure>
+<img src="https://onkanat.github.io/blog/img/gezer-kren/sekil6.png"
+alt="Araba ağırlığı tekil yük" />
+<figcaption aria-hidden="true">Araba ağırlığı tekil yük</figcaption>
+</figure>
+<p><em>Şekil 6 — Araba ağırlığı tekil yük olarak; mesnet tepkileri
+<code>G_A*a/L</code>.</em></p>
+<p>Octave sürümü aynı diyagramı çizer (yük düzeni, <code>V(x)</code>,
+<code>M(x)</code>):</p>
+<figure>
+<img src="https://onkanat.github.io/blog/img/gezer-kren/moment.png"
+alt="Octave ile çizilen moment diyagramı" />
+<figcaption aria-hidden="true">Octave ile çizilen moment
+diyagramı</figcaption>
+</figure>
+<p><em>Şekil 5b — <code>M_maks = 10,40e6</code> daN·cm (iki kiriş
+toplamı); tepe <code>x/L = 0,5</code>’te.</em></p>
+<p>Ve sehim eğrisi, emniyet sınırıyla birlikte:</p>
+<figure>
+<img src="https://onkanat.github.io/blog/img/gezer-kren/sehim.png"
+alt="Sehim eğrisi" />
+<figcaption aria-hidden="true">Sehim eğrisi</figcaption>
+</figure>
+<p><em>Şekil 5c — Sehim eğrisi: <code>f_maks = 2,5498</code> cm,
+<code>f_em = L/750 = 2,6667</code> cm. Yayılı ve tekil yükün
+süperpozisyonu.</em></p>
+<h2 id="baş-kiriş">6. Baş kiriş</h2>
+<p>Baş kiriş, esas kirişleri uçlarından tutar ve köprü tekerleklerine
+yataklık eder. Arabanın bir baş kirişe yanaştığı durumda yatak
+kuvveti:</p>
+<p><code>F = 1/2 * [ Q_K*psi*(L-L_a)/L + G_A*phi*(L-L_a)/L + G_K*phi/2 ] = 12 038 daN</code></p>
+<p>Köprü tekerlekleri arası <code>L_R = 2,6</code> m, esas kirişler
+arası <code>L_E = 1,6</code> m olduğundan konsol kolu:</p>
+<p><code>L_B = (L_R - L_E)/2 = 0,50 m = 50 cm</code> →
+<code>M = F*L_B = 601 900 daN·cm</code></p>
+<p>Baş kiriş iki <code>[</code> profilin sırt sırta kaynağıyla
+yapılıyorsa moment paylaşılır:</p>
+<p><code>W = M/(2*sigma_em) = 601 900/3 200 = 188,1 cm³</code> (profil
+başına)</p>
+<p><code>[200</code> profili (<code>W_x = 191 cm³</code>) bu değeri
+karşılar. Kaynak metin burada <code>376 cm³</code> yazıp
+<code>[260</code> (<code>371 cm³</code>) seçiyor — yani <strong>iki kat
+pay</strong> bırakıyor (aşağıda üçüncü tutarsızlık).</p>
+<figure>
+<img src="https://onkanat.github.io/blog/img/gezer-kren/sekil7.png"
+alt="Baş kiriş" />
+<figcaption aria-hidden="true">Baş kiriş</figcaption>
+</figure>
+<p><em>Şekil 7 — Baş kiriş: köprü tekerlekleri arası <code>L_R</code>,
+esas kirişler arası <code>L_E</code>, kol <code>L_B</code>.</em></p>
+<h2 id="kod-iki-dilde-aynı-hesap">Kod: iki dilde aynı hesap</h2>
+<p>Fortran sürümünde her formül ayrı bir <code>pure function</code>; ana
+program yalnız tabloları yazdırıyor. Örneğin tekerlek çapı ve yürüme
+direnci:</p>
+<pre class="fortran"><code>pure function tekerlek_capi(yuk, p_em, c2, c3, temas_genisligi) result(cap_cm)
+  ! D = R / (p_em * C2 * C3 * b)
+  cap_cm = yuk / (p_em * c2 * c3 * temas_genisligi)
+end function tekerlek_capi
+
+pure function yurume_direnci(toplam_yuk, d_tekerlek, mu, d_aks, f_kol, emniyet) result(w)
+  ! W = n * (G/D) * (mu*d + 2f)  [daN]
+  w = emniyet * (toplam_yuk / d_tekerlek) * (mu * d_aks + 2.0_real64 * f_kol)
+end function yurume_direnci</code></pre>
+<p>Octave sürümü aynı fonksiyonları birebir taşır ve sonunda üç şekil
+çizer:</p>
+<pre class="octave"><code>function cap_cm = tekerlek_capi(yuk, p_em, c2, c3, temas)
+  cap_cm = yuk/(p_em*c2*c3*temas);
+end
+
+% sehim: kapali form  &lt;-&gt;  birim yuk yontemi (Simpson)
+f_kapali = sehim_toplam(l_kopru, elastisite, iz_kesit, g_kopru, q_kaldirma, g_araba, 2);
+f_sayisal = sehim_sayisal(l_kopru, elastisite, iz_kesit, g_kopru, q_kaldirma, g_araba, 2, 200);
+printf(&quot;fark %% %.4f\n&quot;, abs(f_kapali - f_sayisal)/f_kapali*100);</code></pre>
+<p>Programlar <strong>girdi istemez</strong>: veriler
+<code>parameter</code> olarak dosyanın başında durur, aynı veriyle iki
+koşu birebir aynı çıktıyı verir. Başka bir kren için yalnız o sabitleri
+değiştirmek yeterli.</p>
+<h2 id="doğrulama-ne-ölçüldü">Doğrulama: ne ölçüldü</h2>
+<p>“Çalışıyor” demek yetmiyor; ölçülen kapılar şunlar:</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Kapı</th>
+<th>Sonuç</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fortran derleme</td>
+<td><code>gfortran -Wall -Wextra -pedantic -fcheck=all</code> → hatasız,
+uyarısız</td>
+</tr>
+<tr>
+<td>Fortran koşum</td>
+<td>iki koşu birebir aynı (101 satır)</td>
+</tr>
+<tr>
+<td>Octave koşum</td>
+<td>iki koşu birebir aynı</td>
+</tr>
+<tr>
+<td><strong>Diller arası</strong></td>
+<td>Fortran ve Octave sayısal çıktısı <strong>101 satırda
+birebir</strong></td>
+</tr>
+<tr>
+<td>Notlardaki çıktı blokları</td>
+<td>gerçek koşudan alınmış (uydurma yok)</td>
+</tr>
+<tr>
+<td>Çapraz kontroller</td>
+<td>sehim (kapalı form ↔︎ integral), gerilme (tek satır ↔︎ terim terim),
+<code>M_T</code> (bölünmüş ↔︎ doğrudan): <strong>3/3 fark
+%0,0000</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Çapraz kontrolün sınırı:</strong> aynı formülü iki kez yazmak
+fizik modelini doğrulamaz; yalnız <strong>kod hatasını</strong> yakalar.
+Gerçek doğrulama ölçümdür: imalat sonrası yük altında sehim ölçümü,
+kaynak dikişi muayenesi, H2 sınıfı için yorulma hesabı.</p>
+<h2 id="belgede-üç-tutarsızlık">Belgede üç tutarsızlık</h2>
+<p>Kaynak metin, hesabı doğru yürütüyor ama üç yerde kendi içinde
+çelişiyor. Bunlar koda yazıldı ve notlarda açıkça işaretlendi:</p>
+<ol type="1">
+<li><strong><code>C1</code> çelişkisi (§2.1).</strong> Önce
+<code>C1 = 0,63</code> ile <code>p_em = 35,3</code> alınıp
+<code>D_A = 222</code> mm bulunuyor; hemen altında “tekerleğe ait
+değerler <code>C1 = 0,50</code>, <code>p_em = 28</code>” yazıyor.
+İkincisi kullanılırsa <code>D_A = 277</code> mm → standart <strong>315
+mm</strong> gerekir. Yani 250 mm seçimi ancak <code>C1 = 0,63</code>
+satırıyla tutarlı.</li>
+<li><strong><code>s</code> sembolü iki anlamda.</strong> Atalet
+momentinde <code>s = 0,8</code> cm (gövde), mukavemet momentinde
+<code>s = 1,2</code> cm (başlık). Kodda adlar ayrıldı:
+<code>govde_kalinlik</code> / <code>baslik_kalinlik</code>.</li>
+<li><strong>Baş kirişte <code>1/2</code> çarpanı.</strong> Metin
+<code>W = (1/2)*M/sigma_em</code> yazıyor, sayısal olarak
+<code>601900/1600 = 376</code> cm³ buluyor (yarısı alınmamış). Doğrusu
+188 cm³; <code>[200</code> yeterli. Belgenin <code>[260</code> seçimi
+güvenli tarafta ama gerekçesi yazılı değil.</li>
+</ol>
+<p>Bu üç kalem, “belge yanlış” demek değil: ara değerlerin yuvarlanması
+ve sembol tekrarı, ders notlarında sık görülen ve hesabı büyük ölçüde
+etkilemeyen pürüzler. Ama bir hesabı <strong>yeniden üretilebilir
+koda</strong> çevirirken bunları yazıya dökmek şart — yoksa aynı
+belirsizlik koda da geçer.</p>
+<h2 id="sınırlar">Sınırlar</h2>
+<ul>
+<li>Bu bir <strong>boyutlandırma hesabı</strong>dır; imalat resmi değil.
+Kaynak dikişi, bulon, yorulma ömrü ayrı hesaplardır.</li>
+<li>Gerilme ve sehim <strong>statik</strong> yükler içindir; H2 sınıfı
+için DIN 15018’in ömür eğrileri bu yazının kapsamı dışında.</li>
+<li><code>1 kg = 1 daN</code> yaklaşımı kullanıldı (belgedeki gibi).
+Titiz hesapta <code>g = 9,81</code> ile kuvvete çevirmek gerekir; fark
+%2 mertebesindedir ve emniyet katsayılarının yanında küçüktür.</li>
+<li>Kren yolu (ray) temeli, tekerlek-ray aşınması ve çarpma katsayıları
+modellenmedi.</li>
+</ul>
+<h2 id="kaynaklar">Kaynaklar</h2>
+<ul>
+<li>Kaynak metin: “Gezer Kren Köprüsü Konstrüksiyonu ve Hesabı” (EK-A2)
+— şekiller ve örnek veriler.</li>
+<li>DIN 15070 (tekerlek yükü ve çapı), DIN 15018 (çelik konstrüksiyon,
+yük sınıfları).</li>
+<li>Fortran notu ve kodu: <a
+href="https://github.com/onkanat/fortran">onkanat/fortran</a></li>
+<li>Octave notu ve kodu: <a
+href="https://github.com/onkanat/Octave_TR_Doc">onkanat/Octave_TR_Doc</a></li>
+<li>Kardeş yazı: <a
+href="https://onkanat.github.io/fortran/anten_hesap.html">HF anten
+hesabı</a> — aynı disiplin (formül → kod → çapraz kontrol) bir RF
+probleminde.</li>
+</ul>
+</article>
+<p><a href="https://onkanat.blogspot.com/2026/10/gezer-koprulu-kren-hesab-tekerlekten.html">Yazının blog adresi</a></p>

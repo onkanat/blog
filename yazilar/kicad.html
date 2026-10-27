@@ -1,0 +1,37 @@
+<!doctype html><html lang=tr><meta charset=utf-8><title>KiCad</title>
+<article>
+<h2>Özet</h2>
+<p>KiCad, açık kaynaklı elektronik tasarım (EDA) paketidir. Şemadan baskı devreye (PCB) kadar zincirin tamamını kapsar: devreyi çiz, bileşenleri yerleştir, üretim dosyalarını kendi elinle al. Elektronik kart tasarımını ücretli araçlara bağlı kalmadan yapmanızı sağlar.</p>
+<h2>Neden özgür?</h2>
+<p>Lisansı özgür (GPL), dosya biçimleri açık (<code>.kicad_sch</code>, <code>.kicad_pcb</code>). Üretim çıktıları standarttır — Gerber, Excellon, STEP — yani istediğiniz üreticiye gidebilirsiniz. Kart veriniz ve kütüphaneniz sizde kalır.</p>
+<h2>Temel özellikler</h2>
+<ul>
+<li><strong>Eeschema:</strong> şema editörü, hiyerarşik (bloklu) tasarım</li>
+<li><strong>Pcbnew:</strong> kart yerleşimi, katman yönetimi, yönlendirme (router)</li>
+<li><strong>Footprint Editörü:</strong> kendi kılıfını çizme</li>
+<li><strong>3B Görüntüleyici:</strong> kartı mekanik gövdeyle birleşik görme</li>
+<li><strong>İmalat çıktıları:</strong> Gerber, Excellon (delik), STEP</li>
+<li><strong>Kütüphane yöneticisi:</strong> sembol ve footprint kütüphaneleri</li>
+<li><strong>Python betikleme:</strong> pcbnew API ile tekrarlayan işi otomatikleştirme</li>
+</ul>
+<h2>İlk adım</h2>
+<ol>
+<li>Kur, yeni proje aç.</li>
+<li><strong>Eeschema</strong>'da şemayı çiz: bileşen ekle, kabloları bağla.</li>
+<li>Her bileşene footprint (kılıf) ata.</li>
+<li>ERC çalıştır, bağlantıları doğrula, net listesini oluştur.</li>
+<li><strong>Pcbnew</strong>'e geç: bileşenleri yerleştir, yolları çiz.</li>
+<li>DRC çalıştır; Gerber + Excellon üret.</li>
+</ol>
+<h2>Kimler için</h2>
+<p>Elektronik öğrencileri, hobi ve ar-Ge devreleri kuranlar, tasarlayıp kendi eliyle ürettirenler.</p>
+<h2>Ekosistem</h2>
+<ul>
+<li><a href="https://www.onkanat.org/freecad">FreeCAD</a>: kartın fiziksel ölçülerini STEP ile gövdeye taşırsınız.</li>
+<li><a href="https://www.onkanat.org/octave">GNU Octave</a>: filtre ve kontrol değerlerini önce sayısal olarak sınarsınız.</li>
+<li><a href="https://www.onkanat.org/jupyter">Jupyter</a>: ölçüm verisini not defterinde analiz edersiniz.</li>
+</ul>
+<p><strong>Lisans:</strong> GPL-3.0 — özgür.</p>
+<p><strong>Kaynak:</strong> https://www.kicad.org/</p>
+</article>
+<p><a href="https://onkanat.blogspot.com/2026/10/kicad.html">Yazının blog adresi</a></p>
